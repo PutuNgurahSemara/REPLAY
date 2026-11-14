@@ -18,38 +18,45 @@ export function Button({ title, onPress, primary, style }) {
   );
 }
 
-export function SongRow({ song, onPress, onLongPress }) {
+/** selected: undefined = mode biasa, true/false = mode pilih banyak. */
+export function SongRow({ song, onPress, onLongPress, selected }) {
   const { current } = usePlayer();
   const playing = current?.id === song.id;
   return (
-    <Pressable onPress={onPress} onLongPress={onLongPress} style={({ pressed }) => [s.row, pressed && { backgroundColor: C.card }]}>
-      <Text style={[s.title, playing && { color: C.green }]} numberOfLines={1}>{song.title}</Text>
-      <Text style={s.sub} numberOfLines={1}>{song.artist} · {mmss(song.duration)}{song.lyrics ? ' · lirik' : ''}</Text>
+    <Pressable onPress={onPress} onLongPress={onLongPress} accessibilityState={selected === undefined ? undefined : { checked: selected }}
+      style={({ pressed }) => [s.row, { flexDirection: 'row', alignItems: 'center', gap: 12 }, (pressed || selected) && { backgroundColor: C.card }]}>
+      {selected !== undefined && <MaterialIcons name={selected ? 'check-circle' : 'radio-button-unchecked'} size={24} color={selected ? C.green : C.dim} />}
+      <View style={{ flex: 1 }}>
+        <Text style={[s.title, playing && { color: C.green }]} numberOfLines={1}>{song.title}</Text>
+        <Text style={s.sub} numberOfLines={1}>{song.artist} · {mmss(song.duration)}{song.lyrics ? ' · lirik' : ''}</Text>
+      </View>
     </Pressable>
   );
 }
 
-/** Modal pilih playlist untuk menambahkan lagu. */
+/** Modal pilih playlist untuk menambahkan satu lagu atau array lagu. */
 export function PlaylistPicker({ song, onClose }) {
   const { playlists, setPlaylist } = useLibrary();
   const names = Object.keys(playlists);
+  const ids = song ? [].concat(song).map((x) => x.id) : [];
+  const hasAll = (n) => ids.every((id) => playlists[n].includes(id));
   return (
     <Modal visible={!!song} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose}>
         <View style={s.sheet}>
           <View style={s.grip} />
-          <Text style={s.h}>Tambah ke playlist</Text>
+          <Text style={s.h}>Tambah {ids.length > 1 ? `${ids.length} lagu ` : ''}ke playlist</Text>
           {names.length === 0 && <Text style={s.sub}>Belum ada playlist. Buat dulu di tab Playlist.</Text>}
           <FlatList data={names} keyExtractor={(n) => n} renderItem={({ item }) => (
             <Pressable style={s.action} onPress={() => {
-              if (!playlists[item].includes(song.id)) setPlaylist(item, [...playlists[item], song.id]);
+              setPlaylist(item, [...playlists[item], ...ids.filter((id) => !playlists[item].includes(id))]);
               onClose();
             }}>
-              <MaterialIcons name={playlists[item].includes(song.id) ? 'check-circle' : 'queue-music'} size={24}
-                color={playlists[item].includes(song.id) ? C.green : C.dim} />
+              <MaterialIcons name={hasAll(item) ? 'check-circle' : 'queue-music'} size={24}
+                color={hasAll(item) ? C.green : C.dim} />
               <View style={{ flex: 1 }}>
                 <Text style={s.title}>{item}</Text>
-                <Text style={s.sub}>{playlists[item].includes(song.id) ? 'sudah ada' : `${playlists[item].length} lagu`}</Text>
+                <Text style={s.sub}>{hasAll(item) ? 'sudah ada' : `${playlists[item].length} lagu`}</Text>
               </View>
             </Pressable>
           )} />

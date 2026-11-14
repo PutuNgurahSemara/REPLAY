@@ -83,9 +83,11 @@ Proyek ini terbuka untuk siapa saja yang ingin belajar atau menambahkan fitur ba
 # Catatan Pengembangan & Bug
 
 ## Bug / Masalah Saat Ini
-- [ ] **Sleep Mode:** Ketika waktu timer habis, audio lagu berikutnya sempat terputar sebentar (di bawah 1 detik) sebelum player benar-benar berhenti.
-- [ ] **Fitur Import:** Fitur import file audio lokal ke dalam library saat ini belum berjalan.
+- Masih no issue (kalau ketemu bisa ingfo aku ye)
 
 ## Rencana Fitur (Roadmap)
-- [ ] Perbaikan logic queue saat sleep timer aktif
-- [ ] Tambah file picker untuk import audio lokal
+- **Banner “Kamu sedang offline”** : Muncul saat tidak ada koneksi internet.
+- **Notifikasi Saat Download Sedang Berlangsung** : Muncul saat sedang proses download.
+- **Notifikasi Saat Download Selesai** : Muncul saat download selesai.
+- **Notifikasi Saat Download Gagal** : Muncul saat download gagal.
+- **Notifikasi Saat Download Dibatalkan** : Muncul saat download dibatalkan.

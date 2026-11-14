@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { downloadVideo, findVideos, streamSong, titleKey, updateYtdlp, useLibrary } from '../../lib/library';
@@ -24,11 +24,29 @@ export default function Online() {
   const [progress, setProgress] = useState(null);
   const [status, setStatus] = useState('');
   const [msg, setMsg] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [typed, setTyped] = useState(false); // saran hanya muncul saat user sedang mengetik
 
-  const search = async () => {
+  // Saran kata kunci ala YouTube, dicari 300 ms setelah berhenti mengetik
+  useEffect(() => {
     const q = input.trim();
+    if (!typed || !q || /^https?:\/\//.test(q)) { setSuggestions([]); return; }
+    const ctl = new AbortController();
+    const t = setTimeout(() => {
+      // shortcut: endpoint saran tidak resmi; kalau berubah, saran hilang tapi pencarian biasa tetap jalan
+      fetch(`https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(q)}`, { signal: ctl.signal })
+        .then((r) => r.json()).then((d) => setSuggestions(d[1] || [])).catch(() => {});
+    }, 300);
+    return () => { clearTimeout(t); ctl.abort(); };
+  }, [input, typed]);
+
+  const search = async (text = input) => {
+    const q = text.trim();
     if (!q) return;
+    setTyped(false);
+    setSuggestions([]);
     setSearching(true);
+    setResults([]);
     setMsg('');
     try {
       const r = await findVideos(q);
@@ -90,10 +108,25 @@ export default function Online() {
     <View style={s.screen}>
       <View style={s.bar}>
         <TextInput style={[s.input, { flex: 1 }]} placeholder="Cari lagu atau tempel link YouTube" placeholderTextColor={C.dim}
-          value={input} onChangeText={setInput} onSubmitEditing={search} autoCapitalize="none" autoCorrect={false}
+          value={input} onChangeText={(v) => { setInput(v); setTyped(true); }} onSubmitEditing={() => search()} autoCapitalize="none" autoCorrect={false}
           returnKeyType="search" />
-        <Button title="Cari" primary onPress={busy ? undefined : search} />
+        <Button title="Cari" primary onPress={busy ? undefined : () => search()} />
       </View>
+
+      {suggestions.length > 0 && !busy && (
+        <View style={{ backgroundColor: C.card, marginHorizontal: 16, borderRadius: 8 }}>
+          {suggestions.slice(0, 8).map((q) => (
+            <Pressable key={q} onPress={() => { setInput(q); search(q); }} accessibilityRole="button"
+              style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 }, pressed && { opacity: 0.5 }]}>
+              <MaterialIcons name="search" size={20} color={C.dim} />
+              <Text style={[s.title, { flex: 1 }]} numberOfLines={1}>{q}</Text>
+              <Pressable onPress={() => setInput(q + ' ')} hitSlop={8} accessibilityLabel={`Pakai "${q}" lalu lanjut mengetik`}>
+                <MaterialIcons name="north-west" size={20} color={C.dim} />
+              </Pressable>
+            </Pressable>
+          ))}
+        </View>
+      )}
 
       {(searching || progress !== null || busyId) && (
         <View style={{ paddingHorizontal: 16, gap: 4 }}>
@@ -102,8 +135,8 @@ export default function Online() {
               style={{ height: 6, backgroundColor: C.card, borderRadius: 3 }}>
               <View style={{ height: 6, width: `${progress}%`, backgroundColor: C.green, borderRadius: 3 }} />
             </View>
-          ) : <ActivityIndicator color={C.green} style={{ alignSelf: 'flex-start' }} />}
-          <Text style={[s.sub, { fontSize: 11 }]} numberOfLines={2}>
+          ) : <ActivityIndicator size="large" color={C.green} style={{ alignSelf: 'center', marginTop: 32, transform: [{ scale: 1.5 }] }} />}
+          <Text style={[s.sub, { fontSize: progress === null ? 14 : 11 }, progress === null && { textAlign: 'center', marginTop: 12 }]} numberOfLines={2}>
             {searching ? 'Mencari...' : progress >= 100 ? 'Mengonversi ke MP3 & mencari lirik...' : status}
           </Text>
         </View>

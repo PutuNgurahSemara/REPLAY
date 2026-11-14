@@ -36,16 +36,19 @@ export function PlayerProvider({ children }) {
       const s = queueRef.current[currentIndex];
       if (s) pl.updateLockScreenMetadata({ title: s.title, artist: s.artist });
     });
-    return () => { sub.remove(); pl.remove(); };
+    // pl hidup selama app; pl.remove(i) di playlist = hapus track, bukan release
+    return () => sub.remove();
   }, [pl]);
 
   // Dicek tiap update status (event native tetap datang di latar belakang, beda dengan setTimeout JS)
   useEffect(() => {
-    if (sleep?.at && Date.now() >= sleep.at) {
+    // akhir lagu: pause sebelum track berganti, karena trackChanged baru datang setelah lagu berikutnya mulai bunyi
+    const endNear = sleep?.endOfTrack && status.duration > 0 && status.duration - status.currentTime < 0.4;
+    if (endNear || (sleep?.at && Date.now() >= sleep.at)) {
       pl.pause();
       setSleep(null);
     }
-  }, [status.currentTime, sleep, pl]);
+  }, [status.currentTime, status.duration, sleep, pl]);
 
   const playList = (songs, start = 0, random = false) => {
     if (!songs.length) return;
