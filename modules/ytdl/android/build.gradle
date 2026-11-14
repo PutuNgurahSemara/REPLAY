@@ -1,0 +1,21 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.ytdl'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.ytdl"
+}
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  // yt-dlp + Python + QuickJS dan ffmpeg yang dibundel ke APK
+  implementation 'io.github.junkfood02.youtubedl-android:library:0.18.1'
+  implementation 'io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1'
+}
