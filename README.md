@@ -80,3 +80,12 @@ Untuk kamu yang tertarik melihat cara kerjanya di balik layar:
 
 Proyek ini terbuka untuk siapa saja yang ingin belajar atau menambahkan fitur baru. Silakan fork repository ini, buat branch baru, dan kirimkan pull request.
 
+# Catatan Pengembangan & Bug
+
+## Bug / Masalah Saat Ini
+- [ ] **Sleep Mode:** Ketika waktu timer habis, audio lagu berikutnya sempat terputar sebentar (di bawah 1 detik) sebelum player benar-benar berhenti.
+- [ ] **Fitur Import:** Fitur import file audio lokal ke dalam library saat ini belum berjalan.
+
+## Rencana Fitur (Roadmap)
+- [ ] Perbaikan logic queue saat sleep timer aktif
+- [ ] Tambah file picker untuk import audio lokal
