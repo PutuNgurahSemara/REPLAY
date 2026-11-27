@@ -35,6 +35,9 @@ class YtdlModule : Module() {
       }.out
     }
 
+    // menghentikan proses yt-dlp yang berjalan dengan id ini; run() lalu gagal dengan CanceledException
+    Function("cancel") { id: String -> YoutubeDL.getInstance().destroyProcessById(id) }
+
     AsyncFunction("update") {
       ensureInit()
       YoutubeDL.getInstance().updateYoutubeDL(context(), YoutubeDL.UpdateChannel.STABLE)?.name ?: "UNKNOWN"

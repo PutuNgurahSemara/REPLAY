@@ -23,7 +23,8 @@ export default function Player() {
   const [barW, setBarW] = useState(1);
   const [fetched, setFetched] = useState({}); // lirik yang dicari saat diputar (lagu impor / stream)
   const [sheet, openSheet] = useSheet();
-  const lrc = current && (current.lyrics ?? fetched[current.id]);
+  const saved = current && byId[current.id]; // antrean menyimpan salinan; versi library ikut berubah saat lirik dihapus
+  const lrc = current && ((saved || current).lyrics ?? fetched[current.id]);
   const lines = useMemo(() => parseLrc(lrc), [lrc]);
 
   // lagu yang belum pernah dicek liriknya (lyrics === undefined): cari di LRCLIB sekali
@@ -43,6 +44,13 @@ export default function Player() {
     { icon: 'music-off', label: 'Akhir lagu ini', onPress: sleepEndOfTrack },
     ...(sleep ? [{ icon: 'timer-off', label: 'Matikan sleep timer', destructive: true, onPress: () => setSleepMinutes(0) }] : []),
   ] });
+  // null = "sudah dicek, tidak ada", jadi lirik yang salah tidak dicari ulang otomatis
+  const lyricsMenu = () => openSheet({ title: 'Lirik', subtitle: 'Hapus kalau lirik tidak sesuai dengan lagu', actions: [
+    { icon: 'delete-outline', label: 'Hapus lirik', destructive: true, confirm: 'Ketuk lagi untuk menghapus', onPress: () => {
+      setFetched((f) => ({ ...f, [current.id]: null }));
+      if (saved) updateSong(current.id, { lyrics: null, lyricsSource: null });
+    } },
+  ] });
   if (!current) return <Text style={s.empty}>Tidak ada lagu yang diputar.</Text>;
 
   const cur = currentLine(lines, status.currentTime);
@@ -52,6 +60,10 @@ export default function Player() {
       <Text style={[s.h, { fontSize: 22 }]} numberOfLines={2}>{current.title}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Text style={[s.sub, { flex: 1 }]} numberOfLines={1}>{current.artist}{current.stream ? ' · stream' : ''}</Text>
+        {lines.length > 0 && <>
+          <Ctrl label="Hapus lirik" icon="subtitles-off" size={26} color={C.dim} onPress={lyricsMenu} />
+          <View style={{ width: 16 }} />
+        </>}
         <Ctrl label="Sleep timer" icon={sleep ? 'bedtime' : 'bedtime-off'} size={26} color={sleep ? C.green : C.dim} onPress={sleepMenu} />
         <View style={{ width: 16 }} />
         <Ctrl label="Antrean" icon="queue-music" size={28} color={C.dim} onPress={() => router.push('/queue')} />

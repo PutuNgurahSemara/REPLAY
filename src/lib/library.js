@@ -107,9 +107,18 @@ export async function deviceSongs() {
   }));
 }
 
+const canceled = new Set();
+
+/** Hentikan download yang sedang berjalan; downloadVideo lalu melempar error dengan e.canceled = true. */
+export function cancelDownload(videoId) {
+  canceled.add(videoId);
+  Ytdl.cancel(videoId);
+}
+
 /** Download satu video jadi MP3 + lirik. onProgress(persen, baris log). */
 export async function downloadVideo(videoId, onProgress) {
   MUSIC.create({ idempotent: true, intermediates: true });
+  canceled.delete(videoId);
   const sub = Ytdl.addListener('onProgress', (e) => e.id === videoId && onProgress(e.progress, e.line));
   let err;
   try {
@@ -131,11 +140,13 @@ export async function downloadVideo(videoId, onProgress) {
           downloaded: new Date().toISOString().slice(0, 10),
         };
       } catch (e) {
+        if (canceled.has(videoId)) throw Object.assign(new Error('Dibatalkan'), { canceled: true }); // jangan coba format lain
         err = e;
       }
     }
     throw err;
   } finally {
+    canceled.delete(videoId);
     sub.remove();
   }
 }

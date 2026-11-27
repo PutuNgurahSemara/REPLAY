@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { downloadVideo, findVideos, streamSong, titleKey, updateYtdlp, useLibrary } from '../../lib/library';
+import { cancelDownload, downloadVideo, findVideos, streamSong, titleKey, updateYtdlp, useLibrary } from '../../lib/library';
+import { notifyCanceled, notifyDone, notifyFailed, notifyProgress } from '../../lib/notify';
 import { usePlayer } from '../../lib/player';
 import { Button, C, mmss, s } from '../../lib/ui';
 
@@ -26,6 +27,7 @@ export default function Online() {
   const [msg, setMsg] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [typed, setTyped] = useState(false); // saran hanya muncul saat user sedang mengetik
+  const stopRef = useRef(false); // batal menghentikan sisa antrean "Download semua"
 
   // Saran kata kunci ala YouTube, dicari 300 ms setelah berhenti mengetik
   useEffect(() => {
@@ -72,7 +74,9 @@ export default function Online() {
   };
 
   const download = async (entries) => {
+    stopRef.current = false;
     for (const [i, entry] of entries.entries()) {
+      if (stopRef.current) break;
       if (hasTitle(entry.title)) { // duplikat dicek dari judul saja
         setMsg(`Dilewati (sudah ada): ${entry.title}`);
         continue;
@@ -80,20 +84,36 @@ export default function Online() {
       setBusyId(entry.id);
       setProgress(0);
       setStatus(`[${i + 1}/${entries.length}] Menyiapkan yt-dlp...`);
+      notifyProgress(entry.title, -1);
+      let shown = 0; // notifikasi diperbarui tiap 5% saja, Android membatasi frekuensi update
       try {
         const song = await downloadVideo(entry.id, (p, line) => {
           const pct = p >= 0 ? p : Number(/(\d+(?:\.\d+)?)%/.exec(line || '')?.[1]);
           if (pct >= 0) setProgress(pct);
           if (line) setStatus(line.trim());
+          if (pct >= shown + 5) { shown = pct; notifyProgress(entry.title, pct); }
         });
         addSong(song);
         setMsg(`✓ ${song.title}${song.lyrics ? ' (dengan lirik)' : ''}`);
+        notifyDone(song.title);
       } catch (e) {
-        setMsg(`✗ ${entry.title}: ${String(e.message || e).split('\n').pop()}`); // lanjut ke lagu berikutnya
+        if (e.canceled) {
+          setMsg(`Dibatalkan: ${entry.title}`);
+          notifyCanceled(entry.title);
+          break;
+        }
+        const reason = String(e.message || e).split('\n').pop();
+        setMsg(`✗ ${entry.title}: ${reason}`); // lanjut ke lagu berikutnya
+        notifyFailed(entry.title, reason);
       }
     }
     setBusyId(null);
     setProgress(null);
+  };
+
+  const cancel = () => {
+    stopRef.current = true;
+    if (busyId) cancelDownload(busyId);
   };
 
   const update = async () => {
@@ -139,6 +159,7 @@ export default function Online() {
           <Text style={[s.sub, { fontSize: progress === null ? 14 : 11 }, progress === null && { textAlign: 'center', marginTop: 12 }]} numberOfLines={2}>
             {searching ? 'Mencari...' : progress >= 100 ? 'Mengonversi ke MP3 & mencari lirik...' : status}
           </Text>
+          {progress !== null && <Button title="Batalkan download" onPress={cancel} />}
         </View>
       )}
       {!!msg && <Text style={[s.sub, { paddingHorizontal: 16, marginTop: 4 }]}>{msg}</Text>}
